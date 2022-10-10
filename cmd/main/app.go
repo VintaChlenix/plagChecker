@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"net/http"
 	"plagChecker/internal/app"
+	"plagChecker/internal/db/postgres"
 )
 
 func run() error {
-	/*dbconn, err := postgres.NewClient("") //todo: make config file
+	dbconn, err := postgres.NewClient("") //todo: make config file
 	if err != nil {
 		return fmt.Errorf("failed to make db client: %w", err)
-	}*/
-	checkerApp, err := app.NewApp()
+	}
+	checkerApp, err := app.NewApp(dbconn)
 	if err != nil {
 		return fmt.Errorf("failed to initialize app: %w", err)
 	}
