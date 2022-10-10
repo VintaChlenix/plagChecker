@@ -2,21 +2,33 @@ package main
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"plagChecker/configs"
 	"plagChecker/internal/app"
 	"plagChecker/internal/db/postgres"
 )
 
-func run() error {
-	dbconn, err := postgres.NewClient("postgres") //todo: make config file
+func run(log *zap.SugaredLogger) error {
+	config, err := configs.GetConfig()
 	if err != nil {
-		return fmt.Errorf("failed to make db client: %w", err)
+		log.Panic(err.Error())
 	}
-	checkerApp, err := app.NewApp(dbconn)
+
+	dbClient, err := postgres.NewClient(config.Database.ConnectionString)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	log.Infoln("connected to database")
+
+	checkerApp, err := app.NewApp(log, dbClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize app: %w", err)
 	}
-	if err := http.ListenAndServe(":8080", newRouter(checkerApp)); err != nil {
+	log.Infoln("app initialized")
+	log.Infof("Starting server on: %s", config.Server.URL)
+	if err := http.ListenAndServe(config.Server.URL, newRouter(checkerApp)); err != nil {
 		return fmt.Errorf("failed to run server: %w", err)
 	}
 
@@ -24,8 +36,12 @@ func run() error {
 }
 
 func main() {
-	//todo: need logs
-	if err := run(); err != nil {
-		panic(err.Error())
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	sugar := logger.Sugar()
+
+	if err := run(sugar); err != nil {
+		sugar.Error(err.Error())
+		os.Exit(1)
 	}
 }
