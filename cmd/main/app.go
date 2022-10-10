@@ -8,7 +8,7 @@ import (
 )
 
 func run() error {
-	dbconn, err := postgres.NewClient("") //todo: make config file
+	dbconn, err := postgres.NewClient("postgres") //todo: make config file
 	if err != nil {
 		return fmt.Errorf("failed to make db client: %w", err)
 	}
