@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"plagChecker/internal/db"
+	"plagChecker/internal/model"
 )
 
 type Client struct {
 	db *pgx.Conn
 }
+
+var _ db.DB = Client{}
 
 func NewClient(connectionString string) (*Client, error) {
 	conn, err := pgx.Connect(context.Background(), connectionString)
@@ -16,4 +20,71 @@ func NewClient(connectionString string) (*Client, error) {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
 	return &Client{db: conn}, nil
+}
+
+func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) error {
+	q := `
+		INSERT INTO
+		  metadata(name, lab_id, variant, norm_code, sum)
+		VALUES
+		  ($1, $2, $3, $4, $5)
+	`
+	if _, err := c.db.Exec(
+		ctx,
+		q,
+		metadata.Name,
+		metadata.LabID,
+		metadata.Variant,
+		metadata.NormCode,
+		metadata.Sum,
+	); err != nil {
+		return fmt.Errorf("failed to insert student metadata: %w", err)
+	}
+	return nil
+}
+
+func (c Client) SelectStudentMetadata(ctx context.Context, name string, labID int, variant int) (*model.Metadata, error) {
+	q := `
+		SELECT
+		  name, lab_id, variant, norm_code, sum
+		FROM
+		  metadata
+		WHERE
+		  name = $1 AND variant = $2 AND lab_id = $3
+	`
+	row := c.db.QueryRow(ctx, q, name, variant, labID)
+
+	var studentMetadata model.Metadata
+	if err := row.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum); err != nil {
+		return nil, fmt.Errorf("failed to parse student metadata: %w", err)
+	}
+	return &studentMetadata, nil
+}
+
+func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant int) ([]model.Metadata, error) {
+	q := `
+		SELECT
+		  name, lab_id, variant, norm_code, sum
+		FROM
+		  metadata
+		WHERE
+		  lab_id = $1, variant = $2
+	`
+	rows, err := c.db.Query(ctx, q, labID, variant)
+	if err != nil {
+		return nil, err
+	}
+
+	studentsMetadata := make([]model.Metadata, 0)
+	for rows.Next() {
+		var studentMetadata model.Metadata
+		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum); err != nil {
+			return nil, fmt.Errorf("failed to parse student metadata: %w", err)
+		}
+		studentsMetadata = append(studentsMetadata, studentMetadata)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse students metadata: %w", err)
+	}
+	return studentsMetadata, nil
 }
