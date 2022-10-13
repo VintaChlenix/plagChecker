@@ -1,8 +1,10 @@
-CREATE TABLE metadata(
-    name text,
-    lab_id integer,
-    variant integer,
+CREATE TABLE metadata
+(
+    name      text,
+    lab_id    text,
+    variant   text,
     norm_code text,
-    sum text,
-    PRIMARY KEY(name, lab_id, variant)
+    sum       text,
+    tokens    text,
+    PRIMARY KEY (name, lab_id, variant)
 )

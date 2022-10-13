@@ -8,6 +8,8 @@ require (
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846 // indirect
 	github.com/go-chi/chi v1.5.4
 	github.com/jackc/pgx/v5 v5.0.1
+	github.com/kljensen/snowball v0.6.0 // indirect
+	github.com/sergi/go-diff v1.2.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/exp v0.0.0-20221011111909-0220f59fc3e4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

@@ -2,7 +2,6 @@ package app
 
 import (
 	"go.uber.org/zap"
-	"net/http"
 	"plagChecker/internal/db"
 )
 
@@ -16,8 +15,4 @@ func NewApp(log *zap.SugaredLogger, db db.DB) (*App, error) {
 		log: log,
 		db:  db,
 	}, nil
-}
-
-func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
-
 }

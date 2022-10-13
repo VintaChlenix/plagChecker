@@ -25,9 +25,9 @@ func NewClient(connectionString string) (*Client, error) {
 func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) error {
 	q := `
 		INSERT INTO
-		  metadata(name, lab_id, variant, norm_code, sum)
+		  metadata(name, lab_id, variant, norm_code, sum, tokens)
 		VALUES
-		  ($1, $2, $3, $4, $5)
+		  ($1, $2, $3, $4, $5, $6)
 	`
 	if _, err := c.db.Exec(
 		ctx,
@@ -37,16 +37,17 @@ func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) er
 		metadata.Variant,
 		metadata.NormCode,
 		metadata.Sum,
+		metadata.Tokens,
 	); err != nil {
 		return fmt.Errorf("failed to insert student metadata: %w", err)
 	}
 	return nil
 }
 
-func (c Client) SelectStudentMetadata(ctx context.Context, name string, labID int, variant int) (*model.Metadata, error) {
+func (c Client) SelectStudentMetadata(ctx context.Context, name string, labID string, variant string) (*model.Metadata, error) {
 	q := `
 		SELECT
-		  name, lab_id, variant, norm_code, sum
+		  name, lab_id, variant, norm_code, sum, tokens
 		FROM
 		  metadata
 		WHERE
@@ -55,20 +56,20 @@ func (c Client) SelectStudentMetadata(ctx context.Context, name string, labID in
 	row := c.db.QueryRow(ctx, q, name, variant, labID)
 
 	var studentMetadata model.Metadata
-	if err := row.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum); err != nil {
+	if err := row.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
 		return nil, fmt.Errorf("failed to parse student metadata: %w", err)
 	}
 	return &studentMetadata, nil
 }
 
-func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant int) ([]model.Metadata, error) {
+func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error) {
 	q := `
 		SELECT
-		  name, lab_id, variant, norm_code, sum
+		  name, lab_id, variant, norm_code, sum, tokens
 		FROM
 		  metadata
 		WHERE
-		  lab_id = $1, variant = $2
+		  lab_id = $1 AND variant = $2
 	`
 	rows, err := c.db.Query(ctx, q, labID, variant)
 	if err != nil {
@@ -78,7 +79,7 @@ func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant int) (
 	studentsMetadata := make([]model.Metadata, 0)
 	for rows.Next() {
 		var studentMetadata model.Metadata
-		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum); err != nil {
+		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
 			return nil, fmt.Errorf("failed to parse student metadata: %w", err)
 		}
 		studentsMetadata = append(studentsMetadata, studentMetadata)

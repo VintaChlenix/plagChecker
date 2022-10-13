@@ -1,11 +1,39 @@
 package checker
 
-import "os"
+import (
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"github.com/sergi/go-diff/diffmatchpatch"
+	"os"
+	parser "plagChecker/pkg/parser/c"
+	"strings"
+)
 
-func GetToken(file *os.File) {
+func GetTokens(file *os.File) (string, error) {
+	file.Seek(0, 0)
+	fs, err := antlr.NewFileStream(file.Name())
+	if err != nil {
+		return "", err
+	}
 
+	lexer := parser.NewCLexer(fs)
+	tokens := make([]string, 0)
+	for {
+		token := lexer.NextToken()
+		if token.GetTokenType() == antlr.TokenEOF {
+			break
+		}
+		tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
+	}
+	res := strings.Join(tokens, "|")
+	return res, nil
 }
 
-func TokenCheck() float64 {
-	return float64(0)
+func TokensCheck(tokens1, tokens2 string) float64 {
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(tokens1, tokens2, false)
+
+	distance := dmp.DiffLevenshtein(diffs)
+	length := maxString(tokens1, tokens2)
+
+	return (1.00 - float64(distance)/float64(length)) * 100.00
 }

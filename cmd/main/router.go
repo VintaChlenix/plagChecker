@@ -8,8 +8,7 @@ import (
 func newRouter(a *app.App) chi.Router {
 	r := chi.NewRouter()
 
-	r.Get("/", a.IndexHandler)
-	r.HandleFunc("/upload", a.UploadHandler)
+	r.Get("/upload/{name}/{labID}/{variant}", a.UploadHandler)
 
 	return r
 }
