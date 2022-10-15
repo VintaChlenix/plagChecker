@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/go-chi/chi"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -15,76 +15,86 @@ import (
 func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	url1 := "https://drive.google.com/uc?id=1RX1xgNcBdDBmRIWolQ3fRSklb7XIhOgn&export=download"
-	//url2 := "https://drive.google.com/u/0/uc?id=1DyK-8dTA9K1Di10zB5xI8_AyWp7vLzna&export=download"
-
-	name := chi.URLParam(r, "name")
-	labID := chi.URLParam(r, "labID")
-	variant := chi.URLParam(r, "variant")
-
-	fileName, err := a.uploadFile(url1, name, labID, variant)
+	tmpl, err := template.ParseFiles("internal/templates/upload.html")
 	if err != nil {
-		a.log.Errorf("failed to upload file: %w")
-		w.Write([]byte("failed to upload file"))
+		a.log.Errorf("failed to parse template file: %w", err)
 		return
 	}
+	switch r.Method {
+	case "GET":
+		tmpl.Execute(w, nil)
+	case "POST":
+		request := dto.UploadRequest{UploadInfo: model.UploadInfo{
+			URL:     r.FormValue("url"),
+			Name:    r.FormValue("name"),
+			LabID:   r.FormValue("lab_id"),
+			Variant: r.FormValue("variant"),
+		}}
 
-	metadata, err := a.countMetadata(fileName, name, labID, variant)
-	if err != nil {
-		a.log.Errorf("failed to count metadata: %w", err)
-		w.Write([]byte("failed to count metadata"))
-		if err := os.Remove(fileName); err != nil {
-			a.log.Errorf("failed to remove file %s: %w", fileName, err)
+		fileName, err := a.uploadFile(request.URL, request.Name, request.LabID, request.Variant)
+		if err != nil {
+			a.log.Errorf("failed to upload file: %w", err)
+			w.Write([]byte("failed to upload file"))
+			return
 		}
-		return
-	}
 
-	checkResult, err := a.checkMetadata(ctx, metadata)
-	if err != nil {
-		a.log.Errorf("failed to check metadata: %w", err)
-		w.Write([]byte("failed to check metadata"))
-		if err := os.Remove(fileName); err != nil {
-			a.log.Errorf("failed to remove file %s: %w", fileName, err)
+		metadata, err := a.countMetadata(fileName, request.Name, request.LabID, request.Variant)
+		if err != nil {
+			a.log.Errorf("failed to count metadata: %w", err)
+			w.Write([]byte("failed to count metadata"))
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			return
 		}
-		return
-	}
-	switch checkResult.Result {
-	case model.CheckResultType1:
-		a.log.Infof("student: %s | checkResult: %s explanation: %s", name, checkResult.Result, checkResult.Explanation)
-		if err := os.Remove(fileName); err != nil {
-			a.log.Errorf("failed to remove file %s: %w", fileName, err)
-		}
-		w.Write([]byte("Plagiarism!!! Type1"))
-		return
-	case model.CheckResultType2:
-		a.log.Infof("student: %s | checkResult: %s explanation: %s", name, checkResult.Result, checkResult.Explanation)
-		if err := os.Remove(fileName); err != nil {
-			a.log.Errorf("failed to remove file %s: %w", fileName, err)
-		}
-		w.Write([]byte("Plagiarism!!! Type2"))
-		return
-	case model.CheckResultType3:
-		a.log.Infof("student: %s | checkResult: %s explanation: %s", name, checkResult.Result, checkResult.Explanation)
-		if err := os.Remove(fileName); err != nil {
-			a.log.Errorf("failed to remove file %s: %w", fileName, err)
-		}
-		w.Write([]byte("OK."))
-		return
-	}
 
-	if err := a.storeMetadata(ctx, metadata); err != nil {
-		a.log.Errorf("failed to store metadata")
-		w.Write([]byte("failed to upload file"))
+		checkResult, err := a.checkMetadata(ctx, metadata)
+		if err != nil {
+			a.log.Errorf("failed to check metadata: %w", err)
+			w.Write([]byte("failed to check metadata"))
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			return
+		}
+		switch checkResult.Result {
+		case model.CheckResultType1:
+			a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			w.Write([]byte("Plagiarism!!! Type1"))
+			return
+		case model.CheckResultType2:
+			a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			w.Write([]byte("Plagiarism!!! Type2"))
+			return
+		case model.CheckResultType3:
+			a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			w.Write([]byte("OK."))
+			return
+		}
+
+		if err := a.storeMetadata(ctx, metadata); err != nil {
+			a.log.Errorf("failed to store metadata")
+			w.Write([]byte("failed to upload file"))
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			return
+		}
+
 		if err := os.Remove(fileName); err != nil {
 			a.log.Errorf("failed to remove file %s: %w", fileName, err)
 		}
-		return
+		w.Write([]byte("Very good!!!"))
 	}
-
-	if err := os.Remove(fileName); err != nil {
-		a.log.Errorf("failed to remove file %s: %w", fileName, err)
-	}
-	w.Write([]byte("Very good!!!"))
 }
 
 func (a *App) uploadFile(url, name, labID, variant string) (string, error) {

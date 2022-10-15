@@ -9,6 +9,13 @@ type Metadata struct {
 	Tokens   string `json:"tokens"`
 }
 
+type UploadInfo struct {
+	URL     string `json:"url"`
+	Name    string `json:"name"`
+	LabID   string `json:"lab_id"`
+	Variant string `json:"variant"`
+}
+
 type Result string
 
 const (

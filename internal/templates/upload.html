@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>Upload File</title>
 </head>
 <body>
-<form
-        enctype="multipart/form-data"
-        action="http://localhost:8080/upload"
-        method="post"
->
-    <input type="file" name="myFile" />
-    <input type="submit" value="upload" />
+    <form method="post">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" size="10">
+
+        <label for="lab_id">LabID:</label>
+        <input type="text" id="lab_id" name="lab_id" size="10">
+
+        <label for="variant">Variant:</label>
+        <input type="text" id="variant" name="variant" size="10">
+
+        <label for="url">Download URL:</label>
+        <input type="text" id="url" name="url" size="30">
+
+        <input type="submit" value="Upload" />
+    </form>
 </form>
 </body>
 </html>
