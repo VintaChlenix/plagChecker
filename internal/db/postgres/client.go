@@ -57,6 +57,7 @@ func (c Client) SelectStudentLabs(ctx context.Context, name string) ([]model.Stu
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	studentLabs := make([]model.StudentCheckResult, 0)
 	for rows.Next() {
@@ -85,6 +86,7 @@ func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	studentsMetadata := make([]model.Metadata, 0)
 	for rows.Next() {
