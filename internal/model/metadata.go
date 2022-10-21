@@ -14,11 +14,13 @@ type UploadInfo struct {
 	Name    string `json:"name"`
 	LabID   string `json:"lab_id"`
 	Variant string `json:"variant"`
+	Ext     string `json:"ext"`
 }
 
 type Result string
 
 const (
+	CheckResultType0 Result = "Identical files"
 	CheckResultType1 Result = "Completely plagiarized"
 	CheckResultType2 Result = "Renamed variables, functions and so on..."
 	CheckResultType3 Result = "A little plagiarized"

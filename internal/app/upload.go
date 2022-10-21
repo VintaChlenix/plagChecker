@@ -10,6 +10,7 @@ import (
 	"plagChecker/internal/dto"
 	"plagChecker/internal/model"
 	"plagChecker/pkg/checker"
+	"strings"
 )
 
 func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,16 +30,17 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			Name:    r.FormValue("name"),
 			LabID:   r.FormValue("lab_id"),
 			Variant: r.FormValue("variant"),
+			Ext:     r.FormValue("ext"),
 		}}
 
-		fileName, err := a.uploadFile(request.URL, request.Name, request.LabID, request.Variant)
+		fileName, err := a.uploadFile(request)
 		if err != nil {
 			a.log.Errorf("failed to upload file: %w", err)
 			w.Write([]byte("failed to upload file"))
 			return
 		}
 
-		metadata, err := a.countMetadata(fileName, request.Name, request.LabID, request.Variant)
+		metadata, err := a.countMetadata(fileName, request)
 		if err != nil {
 			a.log.Errorf("failed to count metadata: %w", err)
 			w.Write([]byte("failed to count metadata"))
@@ -58,6 +60,13 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch checkResult.Result {
+		case model.CheckResultType0:
+			a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			w.Write([]byte("Plagiarism!!! Type0"))
+			return
 		case model.CheckResultType1:
 			a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
 			if err := os.Remove(fileName); err != nil {
@@ -77,9 +86,11 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
-			w.Write([]byte("OK."))
+			w.Write([]byte("Plagiarism!!! Type3"))
 			return
 		}
+
+		a.log.Infof("student: %s | checkResult: %s explanation: %s", request.Name, checkResult.Result, checkResult.Explanation)
 
 		if err := a.storeMetadata(ctx, metadata); err != nil {
 			a.log.Errorf("failed to store metadata")
@@ -97,14 +108,16 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) uploadFile(url, name, labID, variant string) (string, error) {
-	response, err := http.Get(url)
+func (a *App) uploadFile(request dto.UploadRequest) (string, error) {
+	downloadURL := a.parseURL(request.URL)
+
+	response, err := http.Get(downloadURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to download file: %w", err)
 	}
 	defer response.Body.Close()
 
-	output, err := os.Create(fmt.Sprintf("%s_%s_%s", name, labID, variant))
+	output, err := os.Create(fmt.Sprintf("%s_%s_%s.%s", request.Name, request.LabID, request.Variant, request.Ext))
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
 	}
@@ -113,10 +126,15 @@ func (a *App) uploadFile(url, name, labID, variant string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to copy file: %w", err)
 	}
-	return fmt.Sprintf("%s_%s_%s", name, labID, variant), nil
+	return fmt.Sprintf("%s_%s_%s.%s", request.Name, request.LabID, request.Variant, request.Ext), nil
 }
 
-func (a *App) countMetadata(fileName, name, labID, variant string) (*dto.CountMetadataResponse, error) {
+func (a *App) parseURL(url string) string {
+	slice := strings.Split(url, "/")
+	return fmt.Sprintf("https://drive.google.com/uc?id=%s&export=download", slice[5])
+}
+
+func (a *App) countMetadata(fileName string, request dto.UploadRequest) (*dto.CountMetadataResponse, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -139,9 +157,9 @@ func (a *App) countMetadata(fileName, name, labID, variant string) (*dto.CountMe
 	}
 	return &dto.CountMetadataResponse{
 		Metadata: model.Metadata{
-			Name:     name,
-			LabID:    labID,
-			Variant:  variant,
+			Name:     request.Name,
+			LabID:    request.LabID,
+			Variant:  request.Variant,
 			NormCode: norm,
 			Sum:      sum,
 			Tokens:   tokens,
@@ -157,7 +175,7 @@ func (a *App) checkMetadata(ctx context.Context, metadata *dto.CountMetadataResp
 	for i := range otherMetadata {
 		if checker.SumCheck(metadata.Metadata.Sum, otherMetadata[i].Sum) {
 			return &dto.CheckMetadataResponse{
-				Result:      model.CheckResultType1,
+				Result:      model.CheckResultType0,
 				Explanation: "Sums are identical, this file was sent before!",
 			}, nil
 		}
@@ -172,7 +190,13 @@ func (a *App) checkMetadata(ctx context.Context, metadata *dto.CountMetadataResp
 		if checker.TokensCheck(metadata.Metadata.Tokens, otherMetadata[i].Tokens) > float64(60) {
 			return &dto.CheckMetadataResponse{
 				Result:      model.CheckResultType2,
-				Explanation: "TokensCheck failed. Code plagiarized with renamings, but structures are similar.",
+				Explanation: "Tokens Check failed. Code plagiarized with cosmetic changes, but structures are similar.",
+			}, nil
+		}
+		if checker.MetricsCheck(metadata.Metadata.Tokens, otherMetadata[i].Tokens) > float64(60) {
+			return &dto.CheckMetadataResponse{
+				Result:      model.CheckResultType3,
+				Explanation: "Metrics Check failed. The program is rewritten in some way with the general preservation of the logic of work and functionality. However, syntactically it may be completely different from the original",
 			}, nil
 		}
 	}

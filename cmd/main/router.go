@@ -9,6 +9,7 @@ func newRouter(a *app.App) chi.Router {
 	r := chi.NewRouter()
 
 	r.HandleFunc("/upload", a.UploadHandler)
+	r.Get("/check/{name}", a.CheckStudentHandler)
 
 	return r
 }

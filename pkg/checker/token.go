@@ -4,7 +4,9 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"os"
-	parser "plagChecker/pkg/parser/c"
+	"path/filepath"
+	c "plagChecker/pkg/parser/c"
+	cpp "plagChecker/pkg/parser/cpp"
 	"strings"
 )
 
@@ -15,16 +17,30 @@ func GetTokens(file *os.File) (string, error) {
 		return "", err
 	}
 
-	lexer := parser.NewCLexer(fs)
 	tokens := make([]string, 0)
-	for {
-		token := lexer.NextToken()
-		if token.GetTokenType() == antlr.TokenEOF {
-			break
+	switch filepath.Ext(file.Name()) {
+	case ".c":
+		lexer := c.NewCLexer(fs)
+		for {
+			token := lexer.NextToken()
+			if token.GetTokenType() == antlr.TokenEOF {
+				break
+			}
+			tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
 		}
-		tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
+	case ".cpp":
+		lexer := cpp.NewCPP14Lexer(fs)
+		for {
+			token := lexer.NextToken()
+			if token.GetTokenType() == antlr.TokenEOF {
+				break
+			}
+			tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
+		}
 	}
+
 	res := strings.Join(tokens, "|")
+
 	return res, nil
 }
 

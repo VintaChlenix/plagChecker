@@ -7,6 +7,6 @@ import (
 
 type DB interface {
 	CreateMetadata(ctx context.Context, metadata *model.Metadata) error
-	SelectStudentMetadata(ctx context.Context, name string, labID string, variant string) (*model.Metadata, error)
+	SelectStudentLabs(ctx context.Context, name string) ([]model.StudentCheckResult, error)
 	SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error)
 }

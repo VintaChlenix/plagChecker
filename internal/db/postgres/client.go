@@ -44,22 +44,32 @@ func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) er
 	return nil
 }
 
-func (c Client) SelectStudentMetadata(ctx context.Context, name string, labID string, variant string) (*model.Metadata, error) {
+func (c Client) SelectStudentLabs(ctx context.Context, name string) ([]model.StudentCheckResult, error) {
 	q := `
 		SELECT
-		  name, lab_id, variant, norm_code, sum, tokens
+		  lab_id, variant
 		FROM
 		  metadata
 		WHERE
-		  name = $1 AND variant = $2 AND lab_id = $3
+		  name = $1
 	`
-	row := c.db.QueryRow(ctx, q, name, variant, labID)
-
-	var studentMetadata model.Metadata
-	if err := row.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
-		return nil, fmt.Errorf("failed to parse student metadata: %w", err)
+	rows, err := c.db.Query(ctx, q, name)
+	if err != nil {
+		return nil, err
 	}
-	return &studentMetadata, nil
+
+	studentLabs := make([]model.StudentCheckResult, 0)
+	for rows.Next() {
+		var studentLab model.StudentCheckResult
+		if err := rows.Scan(&studentLab.LabID, &studentLab.Variant); err != nil {
+			return nil, fmt.Errorf("failed to parse student lab: %w", err)
+		}
+		studentLabs = append(studentLabs, studentLab)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse student labs: %w", err)
+	}
+	return studentLabs, nil
 }
 
 func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error) {
