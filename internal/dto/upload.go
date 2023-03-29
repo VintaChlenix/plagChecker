@@ -15,6 +15,7 @@ type CountMetadataResponse struct {
 }
 
 type CheckMetadataResponse struct {
-	Result      model.Result `json:"result"`
-	Explanation string       `json:"explanation"`
+	Result          model.Result `json:"result"`
+	Explanation     string       `json:"explanation"`
+	MatchPercentage float64      `json:"match_ercentage"`
 }

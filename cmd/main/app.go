@@ -22,7 +22,7 @@ func run(log *zap.SugaredLogger) error {
 	}
 	log.Infoln("connected to database")
 
-	checkerApp, err := app.NewApp(log, dbClient)
+	checkerApp, err := app.NewApp(log, dbClient, config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize app: %w", err)
 	}

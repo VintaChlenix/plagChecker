@@ -13,6 +13,11 @@ type Config struct {
 	Database struct {
 		ConnectionString string `yaml:"DATABASE_URL"`
 	} `yaml:"database"`
+	ReferenceValues struct {
+		DiffValue    float64 `yaml:"DIFF_VALUE"`
+		TokensValue  float64 `yaml:"TOKENS_VALUE"`
+		MetricsValue float64 `yaml:"METRICS_VALUE"`
+	} `yaml:"referenceValues"`
 }
 
 func GetConfig() (*Config, error) {

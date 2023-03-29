@@ -5,3 +5,9 @@ server:
 # Database
 database:
   DATABASE_URL: "postgres://postgres:admin@db:5432/postgres"
+
+referenceValues:
+  DIFF_VALUE: 60
+  TOKENS_VALUE: 60
+  METRICS_VALUE: 60
+

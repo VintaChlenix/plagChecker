@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	c "plagChecker/pkg/parser/c"
 	cpp "plagChecker/pkg/parser/cpp"
+	cs "plagChecker/pkg/parser/cs"
+	py "plagChecker/pkg/parser/py"
 	"strings"
 )
 
@@ -30,6 +32,24 @@ func GetTokens(file *os.File) (string, error) {
 		}
 	case ".cpp":
 		lexer := cpp.NewCPP14Lexer(fs)
+		for {
+			token := lexer.NextToken()
+			if token.GetTokenType() == antlr.TokenEOF {
+				break
+			}
+			tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
+		}
+	case ".cs":
+		lexer := cs.NewCSharpLexer(fs)
+		for {
+			token := lexer.NextToken()
+			if token.GetTokenType() == antlr.TokenEOF {
+				break
+			}
+			tokens = append(tokens, lexer.SymbolicNames[token.GetTokenType()])
+		}
+	case ".py":
+		lexer := py.NewPython3Lexer(fs)
 		for {
 			token := lexer.NextToken()
 			if token.GetTokenType() == antlr.TokenEOF {
