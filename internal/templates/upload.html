@@ -2,33 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>Upload File</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 </head>
-<body>
-    <form method="post">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" size="10">
+<body class="bg-light">
+    <br>
+    <br>
+    <div class="container" style="display: flex; align-items: center; justify-content: center;">
+        <h1>Upload File</h1>
+    </div>
+    <div class="container" style="display: flex; align-items: center; justify-content: center;">
+        <form method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" size="10">
 
-        <label for="lab_id">LabID:</label>
-        <input type="text" id="lab_id" name="lab_id" size="10">
+            <label for="lab_id">LabID:</label>
+            <input type="text" id="lab_id" name="lab_id" size="10">
 
-        <label for="variant">Variant:</label>
-        <input type="text" id="variant" name="variant" size="10">
+            <label for="variant">Variant:</label>
+            <input type="text" id="variant" name="variant" size="10">
 
-        <label for="url">Download URL:</label>
-        <input type="text" id="url" name="url" size="30">
+            <label for="url">Download URL:</label>
+            <input type="text" id="url" name="url" size="30">
 
-        <select name="ext">
-            <option value="c">C</option>
-            <option value="cpp">CPP</option>
-            <option value="cs">CS</option>
-            <option value="py">PY</option>
-        </select>
+            <select name="ext">
+                <option value="c">C</option>
+                <option value="cpp">CPP</option>
+                <option value="cs">CS</option>
+                <option value="py">PY</option>
+            </select>
 
-        <input type="submit" value="Upload" />
-    </form>
+            <input type="submit" value="Upload" />
+        </form>
+
+    </div>
 </form>
 </body>
 </html>
