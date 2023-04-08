@@ -61,28 +61,28 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		switch checkResult.Result {
 		case model.CheckResultType0:
-			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %f", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage)
+			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
 			w.Write([]byte("Plagiarism!!! Type0"))
 			return
 		case model.CheckResultType1:
-			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %f", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage)
+			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
 			w.Write([]byte("Plagiarism!!! Type1"))
 			return
 		case model.CheckResultType2:
-			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %f", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage)
+			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
 			w.Write([]byte("Plagiarism!!! Type2"))
 			return
 		case model.CheckResultType3:
-			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %f", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage)
+			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
@@ -90,7 +90,7 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %f", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage)
+		a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | most similar: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 
 		if err := a.storeMetadata(ctx, metadata); err != nil {
 			a.log.Errorf("failed to store metadata")
@@ -131,8 +131,7 @@ func (a *App) uploadFile(request dto.UploadRequest) (string, error) {
 
 func (a *App) parseURL(url string) string {
 	slice := strings.Split(url, "/")
-	a.log.Infof("https://drive.google.com/uc?id=%s&export=download", slice[5])
-	return fmt.Sprintf("https://drive.google.com/uc?id=%s&export=download", slice[5])
+	return fmt.Sprintf("https://www.googleapis.com/drive/v3/files/%s?alt=media&key=%s", slice[5], a.config.APIKey)
 }
 
 func (a *App) countMetadata(fileName string, request dto.UploadRequest) (*dto.CountMetadataResponse, error) {
@@ -169,57 +168,68 @@ func (a *App) countMetadata(fileName string, request dto.UploadRequest) (*dto.Co
 }
 
 func (a *App) checkMetadata(ctx context.Context, metadata *dto.CountMetadataResponse) (*dto.CheckMetadataResponse, error) {
-	otherMetadata, err := a.db.SelectVariantMetadata(ctx, metadata.Metadata.LabID, metadata.Metadata.Variant)
+	otherMetadata, err := a.db.SelectLabMetadata(ctx, metadata.Metadata.LabID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to select metadata by variant: %w", err)
 	}
 
-	averageMatchPercentage := 0.
+	original := ""
+	matchPercentage := make([]float64, 4)
 
 	for i := range otherMetadata {
 		if checker.SumCheck(metadata.Metadata.Sum, otherMetadata[i].Sum) {
 			return &dto.CheckMetadataResponse{
 				Result:          model.CheckResultType0,
 				Explanation:     "Sums are identical, this file was sent before!",
-				MatchPercentage: 1,
+				MatchPercentage: []float64{1, 100, 100, 100},
+				Original:        otherMetadata[i].Name,
 			}, nil
 		}
-
 		diff := checker.DiffCheck(metadata.Metadata.NormCode, otherMetadata[i].NormCode)
-		if diff > a.config.ReferenceValues.DiffValue {
-			return &dto.CheckMetadataResponse{
-				Result:          model.CheckResultType1,
-				Explanation:     "Diff check failed. Code plagiarized with a little changes.",
-				MatchPercentage: diff,
-			}, nil
-		}
-
 		token := checker.TokensCheck(metadata.Metadata.Tokens, otherMetadata[i].Tokens)
-		if token > a.config.ReferenceValues.TokensValue {
-			return &dto.CheckMetadataResponse{
-				Result:          model.CheckResultType2,
-				Explanation:     "Tokens Check failed. Code plagiarized with cosmetic changes, but structures are similar.",
-				MatchPercentage: token,
-			}, nil
-		}
-
 		metric := checker.MetricsCheck(metadata.Metadata.Tokens, otherMetadata[i].Tokens)
-		if metric > a.config.ReferenceValues.MetricsValue {
-			return &dto.CheckMetadataResponse{
-				Result:          model.CheckResultType3,
-				Explanation:     "Metrics Check failed. The program is rewritten in some way with the general preservation of the logic of work and functionality. However, syntactically it may be completely different from the original",
-				MatchPercentage: metric,
-			}, nil
+
+		if (matchPercentage[1]+matchPercentage[2]+matchPercentage[3])/3 < (diff+token+metric)/3 {
+			original = otherMetadata[i].Name
+			matchPercentage[1] = diff
+			matchPercentage[2] = token
+			matchPercentage[3] = metric
 		}
-		if i == 0 {
-			averageMatchPercentage += (diff + token + metric) / 3
-		}
-		averageMatchPercentage = ((diff+token+metric)/3 + averageMatchPercentage) / 2
+	}
+
+	a.log.Infof("%s-%s: diff check: %f\n", metadata.Metadata.Name, original, matchPercentage[1])
+	a.log.Infof("%s-%s: token check: %f\n", metadata.Metadata.Name, original, matchPercentage[2])
+	a.log.Infof("%s-%s: metric check: %f\n", metadata.Metadata.Name, original, matchPercentage[3])
+
+	if matchPercentage[1] > a.config.ReferenceValues.DiffValue {
+		return &dto.CheckMetadataResponse{
+			Result:          model.CheckResultType1,
+			Explanation:     "Diff check failed. Code plagiarized with a little changes.",
+			MatchPercentage: matchPercentage,
+			Original:        original,
+		}, nil
+	}
+	if matchPercentage[2] > a.config.ReferenceValues.TokensValue {
+		return &dto.CheckMetadataResponse{
+			Result:          model.CheckResultType2,
+			Explanation:     "Tokens Check failed. Code plagiarized with cosmetic changes, but structures are similar.",
+			MatchPercentage: matchPercentage,
+			Original:        original,
+		}, nil
+	}
+	if matchPercentage[3] > a.config.ReferenceValues.MetricsValue {
+		return &dto.CheckMetadataResponse{
+			Result:          model.CheckResultType3,
+			Explanation:     "Metrics Check failed. The program is rewritten in some way with the general preservation of the logic of work and functionality. However, syntactically it may be completely different from the original",
+			MatchPercentage: matchPercentage,
+			Original:        original,
+		}, nil
 	}
 	return &dto.CheckMetadataResponse{
 		Result:          model.CheckResultType4,
 		Explanation:     "That's good!",
-		MatchPercentage: averageMatchPercentage,
+		MatchPercentage: matchPercentage,
+		Original:        original,
 	}, nil
 }
 

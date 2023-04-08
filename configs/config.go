@@ -18,6 +18,7 @@ type Config struct {
 		TokensValue  float64 `yaml:"TOKENS_VALUE"`
 		MetricsValue float64 `yaml:"METRICS_VALUE"`
 	} `yaml:"referenceValues"`
+	APIKey string `yaml:"apiKey"`
 }
 
 func GetConfig() (*Config, error) {

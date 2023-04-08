@@ -73,6 +73,35 @@ func (c Client) SelectStudentLabs(ctx context.Context, name string) ([]model.Stu
 	return studentLabs, nil
 }
 
+func (c Client) SelectLabMetadata(ctx context.Context, labID string) ([]model.Metadata, error) {
+	q := `
+		SELECT
+		  name, lab_id, variant, norm_code, sum, tokens
+		FROM
+		  metadata
+		WHERE
+		  lab_id = $1
+	`
+	rows, err := c.db.Query(ctx, q, labID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	studentsMetadata := make([]model.Metadata, 0)
+	for rows.Next() {
+		var studentMetadata model.Metadata
+		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
+			return nil, fmt.Errorf("failed to parse student metadata: %w", err)
+		}
+		studentsMetadata = append(studentsMetadata, studentMetadata)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse students metadata: %w", err)
+	}
+	return studentsMetadata, nil
+}
+
 func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error) {
 	q := `
 		SELECT
