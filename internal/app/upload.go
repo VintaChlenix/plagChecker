@@ -36,14 +36,14 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		fileName, err := a.uploadFile(request)
 		if err != nil {
 			a.log.Errorf("failed to upload file: %w", err)
-			w.Write([]byte("failed to upload file"))
+			tmpl.Execute(w, "failed to upload file")
 			return
 		}
 
 		metadata, err := a.countMetadata(fileName, request)
 		if err != nil {
 			a.log.Errorf("failed to count metadata: %w", err)
-			w.Write([]byte("failed to count metadata"))
+			tmpl.Execute(w, "failed to count metadata")
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
@@ -53,40 +53,50 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		checkResult, err := a.checkMetadata(ctx, metadata)
 		if err != nil {
 			a.log.Errorf("failed to check metadata: %w", err)
-			w.Write([]byte("failed to check metadata"))
+			tmpl.Execute(w, "failed to check metadata")
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
 			return
 		}
+
+		if err := a.storeSending(ctx, metadata, checkResult); err != nil {
+			a.log.Errorf("failed to store sending: %w", err)
+			tmpl.Execute(w, "failed to store your sending")
+			if err := os.Remove(fileName); err != nil {
+				a.log.Errorf("failed to remove file %s: %w", fileName, err)
+			}
+			return
+		}
+
 		switch checkResult.Result {
 		case model.CheckResultType0:
 			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
-			w.Write([]byte("Plagiarism!!! Type0"))
+			tmpl.Execute(w, "Plagiarism!!! Type0")
 			return
 		case model.CheckResultType1:
 			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
-			w.Write([]byte("Plagiarism!!! Type1"))
+			tmpl.Execute(w, "Plagiarism!!! Type1")
 			return
 		case model.CheckResultType2:
 			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
-			w.Write([]byte("Plagiarism!!! Type2"))
+			tmpl.Execute(w, "Plagiarism!!! Type2")
 			return
 		case model.CheckResultType3:
 			a.log.Infof("student: %s | checkResult: %s explanation: %s | matchPercentage: %v | original: %s", request.Name, checkResult.Result, checkResult.Explanation, checkResult.MatchPercentage, checkResult.Original)
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
-			w.Write([]byte("Plagiarism!!! Type3"))
+			tmpl.Execute(w, "Plagiarism!!! Type3")
 			return
 		}
 
@@ -94,7 +104,7 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err := a.storeMetadata(ctx, metadata); err != nil {
 			a.log.Errorf("failed to store metadata")
-			w.Write([]byte("failed to upload file"))
+			tmpl.Execute(w, "failed to upload file")
 			if err := os.Remove(fileName); err != nil {
 				a.log.Errorf("failed to remove file %s: %w", fileName, err)
 			}
@@ -104,8 +114,21 @@ func (a *App) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		if err := os.Remove(fileName); err != nil {
 			a.log.Errorf("failed to remove file %s: %w", fileName, err)
 		}
-		w.Write([]byte("Very good!!!"))
+		tmpl.Execute(w, "Very good!")
 	}
+}
+
+func (a *App) storeSending(ctx context.Context, metadata *dto.CountMetadataResponse, checkResult *dto.CheckMetadataResponse) error {
+	sending := &model.Sending{
+		Name:    metadata.Metadata.Name,
+		LabID:   metadata.Metadata.LabID,
+		Variant: metadata.Metadata.Variant,
+		Results: checkResult.MatchPercentage,
+	}
+	if err := a.db.CreateSending(ctx, sending); err != nil {
+		return fmt.Errorf("failed to create sending: %w", err)
+	}
+	return nil
 }
 
 func (a *App) uploadFile(request dto.UploadRequest) (string, error) {
@@ -196,10 +219,6 @@ func (a *App) checkMetadata(ctx context.Context, metadata *dto.CountMetadataResp
 			matchPercentage[3] = metric
 		}
 	}
-
-	a.log.Infof("%s-%s: diff check: %f\n", metadata.Metadata.Name, original, matchPercentage[1])
-	a.log.Infof("%s-%s: token check: %f\n", metadata.Metadata.Name, original, matchPercentage[2])
-	a.log.Infof("%s-%s: metric check: %f\n", metadata.Metadata.Name, original, matchPercentage[3])
 
 	if matchPercentage[1] > a.config.ReferenceValues.DiffValue {
 		return &dto.CheckMetadataResponse{

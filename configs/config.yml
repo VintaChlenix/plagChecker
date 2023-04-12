@@ -7,9 +7,9 @@ database:
   DATABASE_URL: "postgres://postgres:admin@db:5432/postgres"
 
 referenceValues:
-  DIFF_VALUE: 60
-  TOKENS_VALUE: 60
-  METRICS_VALUE: 60
+  DIFF_VALUE: 35
+  TOKENS_VALUE: 55
+  METRICS_VALUE: 55
 
 apiKey: "AIzaSyAcjDVb4RZbSuvUs3B4TguEmZI0r-hQPvI"
 

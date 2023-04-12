@@ -130,3 +130,51 @@ func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string
 	}
 	return studentsMetadata, nil
 }
+
+func (c Client) CreateSending(ctx context.Context, sending *model.Sending) error {
+	q := `
+		INSERT INTO
+		  sendings(name, lab_id, variant, results)
+		VALUES
+		  ($1, $2, $3, $4)
+	`
+	if _, err := c.db.Exec(
+		ctx,
+		q,
+		sending.Name,
+		sending.LabID,
+		sending.Variant,
+		sending.Results,
+	); err != nil {
+		return fmt.Errorf("failed to insert sending: %w", err)
+	}
+	return nil
+}
+
+func (c Client) SelectLabSendings(ctx context.Context, labID string) ([]model.LabCheckResult, error) {
+	q := `
+		SELECT
+		  name, variant, results
+		FROM
+		  sendings
+		WHERE
+		  lab_id = $1
+	`
+	rows, err := c.db.Query(ctx, q, labID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	labCheckResults := make([]model.LabCheckResult, 0)
+	for rows.Next() {
+		var labCheckResult model.LabCheckResult
+		if err := rows.Scan(&labCheckResult.Name, &labCheckResult.Variant, &labCheckResult.Results); err != nil {
+			return nil, fmt.Errorf("failed to parse lab check result: %w", err)
+		}
+		labCheckResults = append(labCheckResults, labCheckResult)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse lab check results: %w", err)
+	}
+	return labCheckResults, nil
+}

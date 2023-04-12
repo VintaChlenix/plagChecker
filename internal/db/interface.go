@@ -10,4 +10,7 @@ type DB interface {
 	SelectStudentLabs(ctx context.Context, name string) ([]model.StudentCheckResult, error)
 	SelectLabMetadata(ctx context.Context, labID string) ([]model.Metadata, error)
 	SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error)
+
+	CreateSending(ctx context.Context, sending *model.Sending) error
+	SelectLabSendings(ctx context.Context, labID string) ([]model.LabCheckResult, error)
 }
