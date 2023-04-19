@@ -11,7 +11,9 @@
     <tr>
         <th>Name</th>
         <th>Variant</th>
-        <th>Check Results</th>
+        <th>CheckResults</th>
+        <th>URL</th>
+        <th>SourceURL</th>
         <th>
     </tr>
     {{range .}}
@@ -19,6 +21,8 @@
         <td>{{.Name}}</td>
         <td>{{.Variant}}</td>
         <td>{{.Results}}</td>
+        <td>{{.URL}}</td>
+        <td>{{.SourceURL}}</td>
     </tr>
     {{end}}
 </table>

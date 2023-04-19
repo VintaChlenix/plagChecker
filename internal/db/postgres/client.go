@@ -25,9 +25,9 @@ func NewClient(connectionString string) (*Client, error) {
 func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) error {
 	q := `
 		INSERT INTO
-		  metadata(name, lab_id, variant, norm_code, sum, tokens)
+		  metadata(name, lab_id, variant, norm_code, sum, tokens, url)
 		VALUES
-		  ($1, $2, $3, $4, $5, $6)
+		  ($1, $2, $3, $4, $5, $6, $7)
 	`
 	if _, err := c.db.Exec(
 		ctx,
@@ -38,6 +38,7 @@ func (c Client) CreateMetadata(ctx context.Context, metadata *model.Metadata) er
 		metadata.NormCode,
 		metadata.Sum,
 		metadata.Tokens,
+		metadata.URL,
 	); err != nil {
 		return fmt.Errorf("failed to insert student metadata: %w", err)
 	}
@@ -76,7 +77,7 @@ func (c Client) SelectStudentLabs(ctx context.Context, name string) ([]model.Stu
 func (c Client) SelectLabMetadata(ctx context.Context, labID string) ([]model.Metadata, error) {
 	q := `
 		SELECT
-		  name, lab_id, variant, norm_code, sum, tokens
+		  name, lab_id, variant, norm_code, sum, tokens, url
 		FROM
 		  metadata
 		WHERE
@@ -91,7 +92,7 @@ func (c Client) SelectLabMetadata(ctx context.Context, labID string) ([]model.Me
 	studentsMetadata := make([]model.Metadata, 0)
 	for rows.Next() {
 		var studentMetadata model.Metadata
-		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
+		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens, &studentMetadata.URL); err != nil {
 			return nil, fmt.Errorf("failed to parse student metadata: %w", err)
 		}
 		studentsMetadata = append(studentsMetadata, studentMetadata)
@@ -105,7 +106,7 @@ func (c Client) SelectLabMetadata(ctx context.Context, labID string) ([]model.Me
 func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string) ([]model.Metadata, error) {
 	q := `
 		SELECT
-		  name, lab_id, variant, norm_code, sum, tokens
+		  name, lab_id, variant, norm_code, sum, tokens, url
 		FROM
 		  metadata
 		WHERE
@@ -120,7 +121,7 @@ func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string
 	studentsMetadata := make([]model.Metadata, 0)
 	for rows.Next() {
 		var studentMetadata model.Metadata
-		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens); err != nil {
+		if err := rows.Scan(&studentMetadata.Name, &studentMetadata.LabID, &studentMetadata.Variant, &studentMetadata.NormCode, &studentMetadata.Sum, &studentMetadata.Tokens, &studentMetadata.URL); err != nil {
 			return nil, fmt.Errorf("failed to parse student metadata: %w", err)
 		}
 		studentsMetadata = append(studentsMetadata, studentMetadata)
@@ -134,9 +135,9 @@ func (c Client) SelectVariantMetadata(ctx context.Context, labID, variant string
 func (c Client) CreateSending(ctx context.Context, sending *model.Sending) error {
 	q := `
 		INSERT INTO
-		  sendings(name, lab_id, variant, results)
+		  sendings(name, lab_id, variant, results, url, source_url)
 		VALUES
-		  ($1, $2, $3, $4)
+		  ($1, $2, $3, $4, $5, $6)
 	`
 	if _, err := c.db.Exec(
 		ctx,
@@ -145,6 +146,8 @@ func (c Client) CreateSending(ctx context.Context, sending *model.Sending) error
 		sending.LabID,
 		sending.Variant,
 		sending.Results,
+		sending.URL,
+		sending.SourceURL,
 	); err != nil {
 		return fmt.Errorf("failed to insert sending: %w", err)
 	}
@@ -154,7 +157,7 @@ func (c Client) CreateSending(ctx context.Context, sending *model.Sending) error
 func (c Client) SelectLabSendings(ctx context.Context, labID string) ([]model.LabCheckResult, error) {
 	q := `
 		SELECT
-		  name, variant, results
+		  name, variant, results, url, source_url
 		FROM
 		  sendings
 		WHERE
@@ -168,7 +171,7 @@ func (c Client) SelectLabSendings(ctx context.Context, labID string) ([]model.La
 	labCheckResults := make([]model.LabCheckResult, 0)
 	for rows.Next() {
 		var labCheckResult model.LabCheckResult
-		if err := rows.Scan(&labCheckResult.Name, &labCheckResult.Variant, &labCheckResult.Results); err != nil {
+		if err := rows.Scan(&labCheckResult.Name, &labCheckResult.Variant, &labCheckResult.Results, &labCheckResult.URL, &labCheckResult.SourceURL); err != nil {
 			return nil, fmt.Errorf("failed to parse lab check result: %w", err)
 		}
 		labCheckResults = append(labCheckResults, labCheckResult)

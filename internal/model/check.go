@@ -6,7 +6,9 @@ type StudentCheckResult struct {
 }
 
 type LabCheckResult struct {
-	Name    string    `json:"name"`
-	Variant string    `json:"variant"`
-	Results []float64 `json:"results"`
+	Name      string    `json:"name"`
+	Variant   string    `json:"variant"`
+	Results   []float64 `json:"results"`
+	URL       string    `json:"url"`
+	SourceURL string    `json:"source_url"`
 }

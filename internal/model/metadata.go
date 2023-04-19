@@ -7,6 +7,7 @@ type Metadata struct {
 	NormCode string `json:"norm_code"`
 	Sum      string `json:"sum"`
 	Tokens   string `json:"tokens"`
+	URL      string `json:"url"`
 }
 
 type UploadInfo struct {

@@ -18,5 +18,6 @@ type CheckMetadataResponse struct {
 	Result          model.Result `json:"result"`
 	Explanation     string       `json:"explanation"`
 	MatchPercentage []float64    `json:"match_ercentage"`
-	Original        string       `json:"original"`
+	Source          string       `json:"source"`
+	SourceURL       string       `json:"source_url"`
 }
